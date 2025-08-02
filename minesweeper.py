@@ -4,9 +4,9 @@ from random import randint
 class Cell:
     """Класс ячейки игрового поля."""
 
-    def __init__(self, mines_arond=0, is_mine=False):
+    def __init__(self, mines_around=0, is_mine=False):
         # Количество мин вокруг ячейки.
-        self.mines_arond = mines_arond
+        self.mines_around = mines_around
         # Является ли ячейка миной.
         self.is_mine = is_mine
         # Открыта ли ячейка.
@@ -16,8 +16,14 @@ class Cell:
 class MineField:
     """Класс игрового поля."""
 
+    # Эмодзи для закрытой ячейки и ячейки с миной.
     CLOSED = '🔒 '
     MINE = '💣'
+    # Кортеж из относительных индексов вокруг одной ячейки.
+    AROUND_IDX = (
+        (-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0),
+        (1, 1)
+    )
 
     def __init__(self, size, mines):
         self._size = size
@@ -45,11 +51,6 @@ class MineField:
             # Уменьшаем счетчик нераспределенных мин на 1.
             mines_left -= 1
 
-        # Кортеж из относительных индексов вокруг ячейки.
-        indx = (
-            (-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0),
-            (1, 1)
-        )
         # Для каждой ячейки, которая не является миной, считаем количество
         # мин вокруг нее.
         for x in range(self._size):
@@ -57,14 +58,40 @@ class MineField:
                 if not self._field[x][y].is_mine:
                     mine_count = sum(
                         (
-                            self._field[x+i][y+j].is_mine for i, j in indx
+                            self._field[x+i][y+j].is_mine for i, j
+                            in self.AROUND_IDX
                             if 0 <= x + i < self._size and (
                                     0 <= y + j < self._size
                                     )
                         )
                     )
-                    # Записываем количество мин в атрибут mines_arond.
-                    self._field[x][y].mines_arond = mine_count
+                    # Записываем количество мин в атрибут mines_around.
+                    self._field[x][y].mines_around = mine_count
+
+    def _open_cells_recursive(self, x, y):
+        """Метод открытия ячеек по цепочке.
+
+        Если открыта ячейка с цифрой 0, то запускается проверка
+        соседних ячеек. Ячейки с минами остаются закрытыми, ячейки с цифрой,
+        отличной от нуля, открываются и проверяется следующая ячейка.
+        В случае если соседняя ячейка также содержит цифру 0, то метод
+        запускается рекурсивно для этой ячейки.
+        """
+        # Базовый случай.
+        if self._field[x][y].mines_around > 0:
+            return
+        # Рекурсивный случай.
+        for i, j in self.AROUND_IDX:
+            # Пропускаем случаи выхода за пределы поля.
+            if not (0 <= x + i < self._size) or not (0 <= y + j < self._size):
+                continue
+            # Пропускаем ячейки с минами.
+            if self._field[x+i][y+j].is_mine:
+                continue
+            # Открываем соседнюю ячейку и запускаем метод рекурсивно.
+            if not self._field[x+i][y+j].is_open:
+                self._field[x+i][y+j].is_open = True
+                self._open_cells_recursive(x + i, y + j)
 
     def _render_field(self, closed_cells=True):
         """Метод отображения игрового поля."""
@@ -92,14 +119,14 @@ class MineField:
                 print(*map(
                     lambda x: f'{self.CLOSED}' if not x.is_open
                     else f'{self.MINE}' if x.is_mine else
-                    f' {x.mines_arond} ', row
+                    f' {x.mines_around} ', row
                     )
                 )
             # В противном случае открываем все закрытые ячейки.
             else:
                 print(*map(
                     lambda x: f'{self.MINE} ' if x.is_mine else
-                    f' {x.mines_arond} ', row
+                    f' {x.mines_around} ', row
                     )
                 )
 
@@ -150,11 +177,13 @@ class MineField:
                 self.show_all()
                 print("Congrats! You opened the whole field!")
                 break
+            # Иначе запускаем метод открытия соседних ячеек.
+            self._open_cells_recursive(x, y)
 
 
 def main():
-    size = 3
-    mines = 2
+    size = 10
+    mines = 15
     field = MineField(size, mines)
     field.make_turns()
     input('Press ENTER to exit.')
