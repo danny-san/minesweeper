@@ -22,7 +22,7 @@ class MineField:
     def __init__(self, size, mines):
         self._size = size
         self._mines = mines
-        self.field = [
+        self._field = [
             [Cell() for _ in range(self._size)] for _ in range(self._size)
         ]
         self.initialize()
@@ -37,11 +37,11 @@ class MineField:
             y = randint(0, self._size - 1)
             # Если в выбранной рандомной ячейке уже есть мина, то
             # генерируем ряд и колонку заново.
-            if self.field[x][y].is_mine:
+            if self._field[x][y].is_mine:
                 continue
             # Если предыдущая проверка не прошла, то в выбранной ячейке
             # меняем флаг is_mine на True.
-            self.field[x][y].is_mine = True
+            self._field[x][y].is_mine = True
             # Уменьшаем счетчик нераспределенных мин на 1.
             mines_left -= 1
 
@@ -54,17 +54,17 @@ class MineField:
         # мин вокруг нее.
         for x in range(self._size):
             for y in range(self._size):
-                if not self.field[x][y].is_mine:
+                if not self._field[x][y].is_mine:
                     mine_count = sum(
                         (
-                            self.field[x+i][y+j].is_mine for i, j in indx
+                            self._field[x+i][y+j].is_mine for i, j in indx
                             if 0 <= x + i < self._size and (
                                     0 <= y + j < self._size
                                     )
                         )
                     )
                     # Записываем количество мин в атрибут mines_arond.
-                    self.field[x][y].mines_arond = mine_count
+                    self._field[x][y].mines_arond = mine_count
 
     def _render_field(self, closed_cells=True):
         """Метод отображения игрового поля."""
@@ -84,7 +84,7 @@ class MineField:
 
         # Отрисовываем остальное поле.
         # Сначала отображаем колонку с номерами рядов.
-        for i, row in enumerate(self.field):
+        for i, row in enumerate(self._field):
             print(f' {i + 1} |' if i < 9 else f'{i + 1} |', end='')
             # Если парметр closed_cells == True, то помечаем закрытые ячейки
             # соответствующим символом.
@@ -111,15 +111,27 @@ class MineField:
         """Метод отображения всех ячеек в открытом состоянии."""
         self._render_field(closed_cells=False)
 
+    def _are_all_cells_open(self) -> bool:
+        """Метод проверки открыто ли все поле."""
+        closed_cells = 0
+        for x in range(self._size):
+            for y in range(self._size):
+                if self._field[x][y].is_open is False:
+                    closed_cells += 1
+        if self._mines == closed_cells:
+            return True
+        return False
+
     def make_turns(self):
         """Метод совершения ходов игроком."""
         while True:
+            self.show()
             # Просим игрока ввести номер ряда и колонки с ячейкой
             # в пределах игрового поля.
             try:
                 x = int(input('Please enter the row number: ')) - 1
                 y = int(input('Please enter the column number: ')) - 1
-                if self.field[x][y].is_open:
+                if self._field[x][y].is_open:
                     print('This cell is already open. Choose another one.\n')
                     continue
             except Exception:
@@ -127,21 +139,23 @@ class MineField:
                 continue
             print()
             # Открываем выбранную ячейку.
-            self.field[x][y].is_open = True
-            # Если там мина, открываем все поле, и игра заканчивается.
-            if self.field[x][y].is_mine:
+            self._field[x][y].is_open = True
+            # Если там мина, то открываем все поле, и игра заканчивается.
+            if self._field[x][y].is_mine:
                 self.show_all()
                 print("It's a mine! Game over!")
                 break
-            # Иначе обновляем поле, и игра продолжается.
-            self.show()
+            # Если все ячейки без мин открыты, объявляется победа.
+            if self._are_all_cells_open():
+                self.show_all()
+                print("Congrats! You opened the whole field!")
+                break
 
 
 def main():
-    size = 10
-    mines = 20
+    size = 3
+    mines = 2
     field = MineField(size, mines)
-    field.show()
     field.make_turns()
     input('Press ENTER to exit.')
 
