@@ -15,8 +15,9 @@ class Cell:
 
 class MineField:
     """Класс игрового поля."""
-    closed = '🔒 '
-    mine = '💣'
+
+    CLOSED = '🔒 '
+    MINE = '💣'
 
     def __init__(self, size, mines):
         self._size = size
@@ -65,70 +66,80 @@ class MineField:
                     # Записываем количество мин в атрибут mines_arond.
                     self.field[x][y].mines_arond = mine_count
 
-    def show_top_bar(self):
-        """Метод отображения верхнего ряда цифр."""
+    def _render_field(self, closed_cells=True):
+        """Метод отображения игрового поля."""
+        # Отрисовываем верхний ряд с номерами колонок.
         left_margin = 5
         one_column_size = 4
         top_numbers = [i + 1 for i in range(self._size)]
         for num in top_numbers:
             if num == 1:
                 print(f'{' ' * left_margin}{num}   ', end='')
-            elif num < 10:
+            elif num < 9:
                 print(f'{num}   ', end='')
             else:
                 print(f'{num}  ', end='')
         print()
         print(f'{' ' * (left_margin - 1)}{'_' * self._size * one_column_size}')
 
-    def show(self):
-        """Метод отображения текущего состояния игрового поля."""
-        self.show_top_bar()
+        # Отрисовываем остальное поле.
+        # Сначала отображаем колонку с номерами рядов.
         for i, row in enumerate(self.field):
-            print(
-                  f' {i + 1} |' if i < 9 else f'{i + 1} |',
-                  *map(
-                      lambda x: f'{self.closed}' if not x.is_open
-                      else f'{self.mine}' if x.is_mine else
-                      f' {x.mines_arond} ', row
+            print(f' {i + 1} |' if i < 9 else f'{i + 1} |', end='')
+            # Если парметр closed_cells == True, то помечаем закрытые ячейки
+            # соответствующим символом.
+            if closed_cells:
+                print(*map(
+                    lambda x: f'{self.CLOSED}' if not x.is_open
+                    else f'{self.MINE}' if x.is_mine else
+                    f' {x.mines_arond} ', row
+                    )
+                )
+            # В противном случае открываем все закрытые ячейки.
+            else:
+                print(*map(
+                    lambda x: f'{self.MINE} ' if x.is_mine else
+                    f' {x.mines_arond} ', row
                     )
                 )
 
+    def show(self):
+        """Метод отображения текущего состояния игрового поля."""
+        self._render_field()
+
     def show_all(self):
-        """Метод показа всех ячеек в открытом состоянии."""
-        self.show_top_bar()
-        for i, row in enumerate(self.field):
-            print(
-                  f' {i + 1} |' if i < 9 else f'{i + 1} |',
-                  *map(
-                      lambda x: f'{self.mine} ' if x.is_mine else
-                      f' {x.mines_arond} ', row
-                    )
-                )
+        """Метод отображения всех ячеек в открытом состоянии."""
+        self._render_field(closed_cells=False)
 
     def make_turns(self):
         """Метод совершения ходов игроком."""
         while True:
+            # Просим игрока ввести номер ряда и колонки с ячейкой
+            # в пределах игрового поля.
             try:
                 x = int(input('Please enter the row number: ')) - 1
                 y = int(input('Please enter the column number: ')) - 1
                 if self.field[x][y].is_open:
                     print('This cell is already open. Choose another one.\n')
                     continue
-            except ValueError or IndexError:
+            except Exception:
                 print(f'Row and column numbers must be 1 to {self._size}.\n')
                 continue
             print()
+            # Открываем выбранную ячейку.
             self.field[x][y].is_open = True
+            # Если там мина, открываем все поле, и игра заканчивается.
             if self.field[x][y].is_mine:
                 self.show_all()
-                print("It's a mine! The game is over!")
+                print("It's a mine! Game over!")
                 break
+            # Иначе обновляем поле, и игра продолжается.
             self.show()
 
 
 def main():
     size = 10
-    mines = 12
+    mines = 20
     field = MineField(size, mines)
     field.show()
     field.make_turns()
